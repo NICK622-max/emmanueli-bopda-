@@ -22,7 +22,6 @@ Python Pandas NumPy SQL PostgreSQL MySQL Node.js Git ETL
 
 📫 Me contacter
 
-
 ✉️ emmanuelibopda@gmail.com
-💼 LinkedIn
-🌐 Portfolio
+💼 LinkedIn: @emmanueli-bopda
+🌐 https://nick-djoussi-bopda.github.io
