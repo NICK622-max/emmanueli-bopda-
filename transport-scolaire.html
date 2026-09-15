@@ -1,0 +1,1489 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestion des Transports Scolaires</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: white;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .nav-tabs {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 30px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 15px;
+            padding: 10px;
+            backdrop-filter: blur(10px);
+        }
+
+        .nav-tab {
+            padding: 12px 24px;
+            margin: 0 5px;
+            background: transparent;
+            border: none;
+            color: white;
+            cursor: pointer;
+            border-radius: 10px;
+            transition: all 0.3s ease;
+            font-size: 16px;
+            font-weight: 500;
+        }
+
+        .nav-tab.active {
+            background: rgba(255,255,255,0.2);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .nav-tab:hover {
+            background: rgba(255,255,255,0.15);
+            transform: translateY(-2px);
+        }
+
+        .tab-content {
+            display: none;
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            backdrop-filter: blur(10px);
+        }
+
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-row {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .form-row .form-group {
+            flex: 1;
+            margin-bottom: 0;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #555;
+        }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e1e5e9;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            background: #f8f9fa;
+        }
+
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            background: white;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 14px 28px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+            box-shadow: 0 4px 15px rgba(108, 117, 125, 0.3);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+            box-shadow: 0 4px 15px rgba(220, 53, 69, 0.3);
+        }
+
+        .search-bar {
+            margin-bottom: 25px;
+            position: relative;
+        }
+
+        .search-input {
+            padding-left: 45px;
+            background: white;
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #6c757d;
+            font-size: 18px;
+        }
+
+        .quarters-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .quarter-card {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+        }
+
+        .quarter-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        }
+
+        .quarter-title {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #495057;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #667eea;
+        }
+
+        .student-list {
+            list-style: none;
+        }
+
+        .student-item {
+            background: white;
+            margin-bottom: 10px;
+            padding: 12px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s ease;
+        }
+
+        .student-item:hover {
+            transform: translateX(5px);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+        }
+
+        .student-info {
+            flex: 1;
+        }
+
+        .student-name {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 4px;
+        }
+
+        .student-details {
+            font-size: 0.9rem;
+            color: #6c757d;
+        }
+
+        .student-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn-small {
+            padding: 6px 12px;
+            font-size: 12px;
+            border-radius: 6px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 15px;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(40, 167, 69, 0.3);
+        }
+
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .stat-label {
+            font-size: 1rem;
+            opacity: 0.9;
+        }
+
+        .alert {
+            padding: 15px 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-weight: 500;
+        }
+
+        .alert-success {
+            background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .alert-error {
+            background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .no-results {
+            text-align: center;
+            color: #6c757d;
+            font-style: italic;
+            padding: 40px;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .nav-tabs {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .form-row {
+                flex-direction: column;
+                gap: 0;
+            }
+            
+            .quarters-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚌 Gestion des Transports Scolaires</h1>
+            <p>Système de gestion et d'inscription des élèves</p>
+        </div>
+
+            <div class="nav-tabs">
+            <button class="nav-tab active" onclick="showTab('inscription')">📝 Inscription</button>
+            <button class="nav-tab" onclick="showTab('administration')">👥 Administration</button>
+            <button class="nav-tab" onclick="showTab('statistiques')">📊 Statistiques</button>
+            <button class="nav-tab" onclick="showTab('paiements')">💰 Paiements</button>
+            <button class="nav-tab" onclick="showTab('parametres')">⚙️ Paramètres</button>
+        </div>
+
+        <!-- Onglet Inscription -->
+        <div id="inscription" class="tab-content active">
+            <h2>Inscription d'un nouvel élève</h2>
+            <div id="message"></div>
+            
+            <form id="inscriptionForm">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="nom">Nom de l'élève *</label>
+                        <input type="text" id="nom" name="nom" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="prenom">Prénom *</label>
+                        <input type="text" id="prenom" name="prenom" required>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="age">Âge *</label>
+                        <input type="number" id="age" name="age" min="3" max="18" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="classe">Classe *</label>
+                        <input type="text" id="classe" name="classe" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="quartier">Quartier *</label>
+                    <select id="quartier" name="quartier" required>
+                        <option value="AKWA">AKWA</option>
+                            <option value="AKWA~NORD">AKWA~NORD</option>
+                            <option value="BEEDI">BEEDI</option>
+                            <option value="BEPENDA">BEPENDA</option>
+                            <option value="BIFAGA">BIFAGA</option>
+                            <option value="BONAMOUSSADI">BONAMOUSSADI</option>
+                            <option value="BONANDJO">BONANDJO</option>
+                            <option value="CARREFOUR CITE">CARREFOUR CITE</option>
+                            <option value="CITE DES PALMIERS">CITE DES PALMIERS</option>
+                            <option value="DEIDO">DEIDO</option>
+                            <option value="DONGBONG">DONGBONG</option>
+                            <option value="JAPOUMA">JAPOUMA</option>
+                            <option value="KOTTO">KOTTO</option>
+                            <option value="LOGBESSOU">LOGBESSOU</option>
+                            <option value="LOGPOM:NEPTUNE,BASSONG,COLLEGE LE NIL">LOGPOM: NEPTUNE,BASSONG,COLLEGE LE NIL</option>
+                            <option value="NDOGPASSI">NDOGPASSI</option>
+                            <option value="NGODJOOH">NGODJOOH</option>
+                            <option value="PK8_NDOKOTI">PK8_NDOKOTI</option>
+                            <option value="PK9_PK13">PK9_PK13</option>
+                            <option value="PK14">PK14</option>
+                            <option value="PK15-PK19">PK15_PK19</option>
+                            <option value="SITE_sic">SITE_sic</option>
+                            <option value="YASSA">YASSA</option>  
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="typeTransport">Type de transport *</label>
+                    <select id="typeTransport" name="typeTransport" required>
+                        <option value="">Sélectionnez le type</option>
+                        <option value="aller-retour">Aller-Retour</option>
+                        <option value="aller simple">Aller Simple</option>
+                        <option value="retour simple">Retour Simple</option>
+                    </select>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="montant">Montant à avancer (FCFA) *</label>
+                        <input type="number" id="montant" name="montant" min="0" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="zonePassage">Zone de passage *</label>
+                        <input type="text" id="zonePassage" name="zonePassage" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="nomParent">Nom du parent/tuteur *</label>
+                    <input type="text" id="nomParent" name="nomParent" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="telephoneParent">Téléphone du parent *</label>
+                    <input type="tel" id="telephoneParent" name="telephoneParent" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="adresse">Adresse complète </label>
+                    <textarea id="adresse" name="adresse" rows="3"></textarea>
+                </div>
+
+                <button type="submit" class="btn">🚌 Inscrire l'élève</button>
+            </form>
+        </div>
+
+        <!-- Onglet Administration -->
+        <div id="administration" class="tab-content">
+            <h2>Administration des élèves</h2>
+            
+            <div class="search-bar">
+                <div style="position: relative;">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" id="searchInput" class="search-input" placeholder="Rechercher un élève par nom, prénom ou quartier...">
+                </div>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-number" id="totalEleves">0</div>
+                    <div class="stat-label">Total Élèves</div>
+                </div>
+                <div class="stat-card" style="background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);">
+                    <div class="stat-number" id="totalQuartiers">0</div>
+                    <div class="stat-label">Quartiers</div>
+                </div>
+            </div>
+
+            <div id="quartiersContainer" class="quarters-grid">
+                <!-- Les quartiers seront affichés ici -->
+            </div>
+
+            <div id="noResults" class="no-results" style="display: none;">
+                <p>Aucun élève trouvé pour cette recherche.</p>
+            </div>
+        </div>
+
+        <!-- Onglet Statistiques -->
+        <div id="statistiques" class="tab-content">
+            <h2>Statistiques des transports</h2>
+            
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-number" id="statTotalEleves">0</div>
+                    <div class="stat-label">Total Élèves Inscrits</div>
+                </div>
+                <div class="stat-card" style="background: linear-gradient(135deg, #fd7e14 0%, #e8590c 100%);">
+                    <div class="stat-number" id="statAllerRetour">0</div>
+                    <div class="stat-label">Aller-Retour</div>
+                </div>
+                <div class="stat-card" style="background: linear-gradient(135deg, #6f42c1 0%, #5a379b 100%);">
+                    <div class="stat-number" id="statAllerSimple">0</div>
+                    <div class="stat-label">Aller Simple</div>
+                </div>
+                <div class="stat-card" style="background: linear-gradient(135deg, #e83e8c 0%, #d91a72 100%);">
+                    <div class="stat-number" id="statRetourSimple">0</div>
+                    <div class="stat-label">Retour Simple</div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <h3>Revenus par quartier</h3>
+                <div id="revenusQuartiers"></div>
+            </div>
+
+            <div class="form-group">
+                <button class="btn btn-secondary" onclick="exportData()">📊 Exporter les données</button>
+                <button class="btn btn-secondary" onclick="exportReportPDF()" style="margin-left: 10px;">📋 Générer Rapport</button>
+                <button class="btn btn-danger" onclick="clearAllData()" style="margin-left: 10px;">🗑️ Effacer toutes les données</button>
+            </div>
+        </div>
+
+        <!-- Onglet Paiements -->
+        <div id="paiements" class="tab-content">
+            <h2>Gestion des Paiements</h2>
+            
+            <div class="search-bar">
+                <div style="position: relative;">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" id="searchPaiement" class="search-input" placeholder="Rechercher un élève pour enregistrer un paiement...">
+                </div>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-number" id="totalRecettes">0</div>
+                    <div class="stat-label">Total Recettes (FCFA)</div>
+                </div>
+                <div class="stat-card" style="background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);">
+                    <div class="stat-number" id="totalDettes">0</div>
+                    <div class="stat-label">Total Dettes (FCFA)</div>
+                </div>
+                <div class="stat-card" style="background: linear-gradient(135deg, #ffc107 0%, #e0a800 100%);">
+                    <div class="stat-number" id="elevesEndettes">0</div>
+                    <div class="stat-label">Élèves Endettés</div>
+                </div>
+            </div>
+
+            <div id="listePaiements">
+                <!-- Liste des paiements sera affichée ici -->
+            </div>
+        </div>
+
+        <!-- Onglet Paramètres -->
+        <div id="parametres" class="tab-content">
+            <h2>Paramètres du Système</h2>
+            
+            <div class="form-group">
+                <h3>Tarifs par Type de Transport</h3>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="tarifAllerRetour">Aller-Retour (FCFA)</label>
+                        <input type="number" id="tarifAllerRetour" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label for="tarifAllerSimple">Aller Simple (FCFA)</label>
+                        <input type="number" id="tarifAllerSimple" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label for="tarifRetourSimple">Retour Simple (FCFA)</label>
+                        <input type="number" id="tarifRetourSimple" min="0">
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="anneeScolaire">Année Scolaire</label>
+                <input type="text" id="anneeScolaire" placeholder="Ex: 2024-2025">
+            </div>
+
+            <div class="form-group">
+                <button class="btn" onclick="saveSettings()">💾 Sauvegarder les Paramètres</button>
+            </div>
+
+            <div class="form-group">
+                <h3>Gestion de la Base de Données</h3>
+                <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+                    <button class="btn btn-secondary" onclick="backupDatabase()">💾 Sauvegarder BD</button>
+                    <button class="btn btn-secondary" onclick="document.getElementById('restoreFile').click()">📥 Restaurer BD</button>
+                    <button class="btn btn-secondary" onclick="exportToCSV()">📄 Exporter CSV</button>
+                    <button class="btn btn-danger" onclick="resetDatabase()">🔄 Réinitialiser</button>
+                </div>
+                <input type="file" id="restoreFile" accept=".json" style="display: none;" onchange="restoreDatabase(event)">
+            </div>
+
+            <div class="form-group">
+                <h3>Informations Système</h3>
+                <div class="quarter-card">
+                    <p><strong>Nombre d'élèves:</strong> <span id="infoNbEleves">0</span></p>
+                    <p><strong>Dernière sauvegarde:</strong> <span id="infoLastSave">Jamais</span></p>
+                    <p><strong>Version:</strong> 1.0.0</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Base de données simulée (en mémoire) avec structure complète
+        let database = {
+            eleves: [],
+            nextId: 1,
+            settings: {
+                tarifsParType: {
+                    'aller-retour': 15000,
+                    'aller simple': 8000,
+                    'retour simple': 8000
+                },
+                anneeScolaire: '2024-2025'
+            },
+            historique: []
+        };
+
+        // Initialisation de l'application
+        document.addEventListener('DOMContentLoaded', function() {
+            loadDatabase();
+            loadSettings();
+            updateAdministration();
+            updateStatistiques();
+            updatePaiements();
+            updateSystemInfo();
+            
+            // Écouteurs pour les recherches
+            document.getElementById('searchInput').addEventListener('input', handleSearch);
+            document.getElementById('searchPaiement').addEventListener('input', handleSearchPaiement);
+            
+            // Écouteur pour le formulaire d'inscription
+            document.getElementById('inscriptionForm').addEventListener('submit', handleInscription);
+        });
+
+        // Gestion des onglets
+        function showTab(tabName) {
+            // Masquer tous les onglets
+            const tabs = document.querySelectorAll('.tab-content');
+            tabs.forEach(tab => tab.classList.remove('active'));
+            
+            // Désactiver tous les boutons
+            const navTabs = document.querySelectorAll('.nav-tab');
+            navTabs.forEach(tab => tab.classList.remove('active'));
+            
+            // Activer l'onglet sélectionné
+            document.getElementById(tabName).classList.add('active');
+            event.target.classList.add('active');
+            
+            // Mettre à jour les données si nécessaire
+            if (tabName === 'administration') {
+                updateAdministration();
+            } else if (tabName === 'statistiques') {
+                updateStatistiques();
+            } else if (tabName === 'paiements') {
+                updatePaiements();
+            } else if (tabName === 'parametres') {
+                updateSystemInfo();
+            }
+        }
+
+        // Gestion de l'inscription
+        function handleInscription(event) {
+            event.preventDefault();
+            
+            const formData = new FormData(event.target);
+            const eleve = {
+                id: database.nextId++,
+                nom: formData.get('nom'),
+                prenom: formData.get('prenom'),
+                age: parseInt(formData.get('age')),
+                classe: formData.get('classe'),
+                quartier: formData.get('quartier'),
+                typeTransport: formData.get('typeTransport'),
+                montant: parseInt(formData.get('montant')),
+                zonePassage: formData.get('zonePassage'),
+                nomParent: formData.get('nomParent'),
+                telephoneParent: formData.get('telephoneParent'),
+                adresse: formData.get('adresse'),
+                dateInscription: new Date().toISOString()
+            };
+
+            // Ajouter à la base de données
+            database.eleves.push(eleve);
+            
+            // Calculer la dette initiale
+            const tarifComplet = database.settings.tarifsParType[eleve.typeTransport] || 0;
+            eleve.dette = Math.max(0, tarifComplet - eleve.montant);
+            eleve.paiements = [{
+                date: new Date().toISOString(),
+                montant: eleve.montant,
+                type: 'avance_inscription'
+            }];
+            
+            // Enregistrer dans l'historique
+            database.historique.push({
+                date: new Date().toISOString(),
+                type: 'inscription',
+                eleveId: eleve.id,
+                details: `Inscription de ${eleve.prenom} ${eleve.nom}`
+            });
+            
+            saveDatabase();
+            
+            // Afficher le message de succès
+            showMessage(`✅ ${eleve.prenom} ${eleve.nom} a été inscrit(e) avec succès !`, 'success');
+            
+            // Réinitialiser le formulaire
+            event.target.reset();
+            
+            // Mettre à jour les autres onglets
+            updateAdministration();
+            updateStatistiques();
+            updatePaiements();
+        }
+
+        // Gestion de la recherche
+        function handleSearch() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const filteredEleves = database.eleves.filter(eleve => 
+                eleve.nom.toLowerCase().includes(searchTerm) ||
+                eleve.prenom.toLowerCase().includes(searchTerm) ||
+                eleve.quartier.toLowerCase().includes(searchTerm) ||
+                eleve.classe.toLowerCase().includes(searchTerm)
+            );
+            
+            displayElevesByQuartier(filteredEleves);
+        }
+        function handleSearchPaiement() {
+            const searchTerm = document.getElementById('searchPaiement').value.toLowerCase();
+            const filteredEleves = database.eleves.filter(eleve => 
+                eleve.nom.toLowerCase().includes(searchTerm) ||
+                eleve.prenom.toLowerCase().includes(searchTerm) ||
+                eleve.quartier.toLowerCase().includes(searchTerm)
+            );
+            
+            displayListePaiements(filteredEleves);
+        }
+
+        // Affichage de la liste des paiements
+        function displayListePaiements(eleves = database.eleves) {
+            const container = document.getElementById('listePaiements');
+            
+            if (eleves.length === 0) {
+                container.innerHTML = '<div class="no-results"><p>Aucun élève trouvé.</p></div>';
+                return;
+            }
+            
+            container.innerHTML = eleves.map(eleve => {
+                const tarifComplet = database.settings.tarifsParType[eleve.typeTransport] || 0;
+                const totalPaye = (eleve.paiements || []).reduce((sum, p) => sum + p.montant, 0);
+                const dette = Math.max(0, tarifComplet - totalPaye);
+                const statut = dette > 0 ? 'debt' : 'paid';
+                
+                return `
+                    <div class="quarter-card" style="margin-bottom: 15px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                            <div>
+                                <h4>${eleve.prenom} ${eleve.nom}</h4>
+                                <p style="color: #6c757d; margin: 5px 0;">
+                                    ${eleve.classe} • ${eleve.quartier} • ${eleve.typeTransport}
+                                </p>
+                            </div>
+                            <div style="text-align: right;">
+                                <div style="font-size: 1.2rem; font-weight: bold; color: ${statut === 'debt' ? '#dc3545' : '#28a745'};">
+                                    ${statut === 'debt' ? 'Dette: ' + dette.toLocaleString() + ' FCFA' : '✅ Soldé'}
+                                </div>
+                                <div style="font-size: 0.9rem; color: #6c757d;">
+                                    Payé: ${totalPaye.toLocaleString()} / ${tarifComplet.toLocaleString()} FCFA
+                                </div>
+                            </div>
+                        </div>
+                        
+                        ${dette > 0 ? `
+                            <div style="display: flex; gap: 10px; align-items: center;">
+                                <input type="number" id="montant_${eleve.id}" placeholder="Montant du paiement" 
+                                       style="flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 5px;" 
+                                       max="${dette}">
+                                <button class="btn btn-small" onclick="enregistrerPaiement(${eleve.id})">
+                                    💰 Enregistrer Paiement
+                                </button>
+                            </div>
+                        ` : ''}
+                        
+                        <div style="margin-top: 15px;">
+                            <strong>Historique des paiements:</strong>
+                            <div style="max-height: 150px; overflow-y: auto; margin-top: 10px;">
+                                ${(eleve.paiements || []).map(paiement => `
+                                    <div style="background: #f8f9fa; padding: 8px; margin: 5px 0; border-radius: 5px; display: flex; justify-content: space-between;">
+                                        <span>${new Date(paiement.date).toLocaleDateString('fr-FR')}</span>
+                                        <span style="font-weight: bold;">${paiement.montant.toLocaleString()} FCFA</span>
+                                        <span style="font-size: 0.8rem; color: #6c757d;">${paiement.type}</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Enregistrer un paiement
+        function enregistrerPaiement(eleveId) {
+            const montantInput = document.getElementById(`montant_${eleveId}`);
+            const montant = parseInt(montantInput.value);
+            
+            if (!montant || montant <= 0) {
+                alert('Veuillez saisir un montant valide.');
+                return;
+            }
+            
+            const eleve = database.eleves.find(e => e.id === eleveId);
+            if (!eleve) return;
+            
+            const tarifComplet = database.settings.tarifsParType[eleve.typeTransport] || 0;
+            const totalPaye = (eleve.paiements || []).reduce((sum, p) => sum + p.montant, 0);
+            const detteActuelle = Math.max(0, tarifComplet - totalPaye);
+            
+            if (montant > detteActuelle) {
+                alert(`Le montant ne peut pas dépasser la dette de ${detteActuelle} FCFA.`);
+                return;
+            }
+            
+            // Initialiser les paiements si nécessaire
+            if (!eleve.paiements) eleve.paiements = [];
+            
+            // Ajouter le paiement
+            eleve.paiements.push({
+                date: new Date().toISOString(),
+                montant: montant,
+                type: 'paiement_complementaire'
+            });
+            
+            // Enregistrer dans l'historique
+            database.historique.push({
+                date: new Date().toISOString(),
+                type: 'paiement',
+                eleveId: eleveId,
+                details: `Paiement de ${montant} FCFA pour ${eleve.prenom} ${eleve.nom}`
+            });
+            
+            saveDatabase();
+            updatePaiements();
+            showMessage(`✅ Paiement de ${montant.toLocaleString()} FCFA enregistré pour ${eleve.prenom} ${eleve.nom}!`, 'success');
+            
+            montantInput.value = '';
+        }
+
+        // Mise à jour de l'onglet paiements
+        function updatePaiements() {
+            displayListePaiements();
+            
+            // Calcul des statistiques de paiement
+            let totalRecettes = 0;
+            let totalDettes = 0;
+            let elevesEndettes = 0;
+            
+            database.eleves.forEach(eleve => {
+                const tarifComplet = database.settings.tarifsParType[eleve.typeTransport] || 0;
+                const totalPaye = (eleve.paiements || []).reduce((sum, p) => sum + p.montant, 0);
+                const dette = Math.max(0, tarifComplet - totalPaye);
+                
+                totalRecettes += totalPaye;
+                totalDettes += dette;
+                if (dette > 0) elevesEndettes++;
+            });
+            
+            document.getElementById('totalRecettes').textContent = totalRecettes.toLocaleString();
+            document.getElementById('totalDettes').textContent = totalDettes.toLocaleString();
+            document.getElementById('elevesEndettes').textContent = elevesEndettes;
+        }
+
+        // Chargement des paramètres
+        function loadSettings() {
+            document.getElementById('tarifAllerRetour').value = database.settings.tarifsParType['aller-retour'];
+            document.getElementById('tarifAllerSimple').value = database.settings.tarifsParType['aller simple'];
+            document.getElementById('tarifRetourSimple').value = database.settings.tarifsParType['retour simple'];
+            document.getElementById('anneeScolaire').value = database.settings.anneeScolaire;
+        }
+
+        // Sauvegarde des paramètres
+        function saveSettings() {
+            database.settings.tarifsParType['aller-retour'] = parseInt(document.getElementById('tarifAllerRetour').value) || 0;
+            database.settings.tarifsParType['aller simple'] = parseInt(document.getElementById('tarifAllerSimple').value) || 0;
+            database.settings.tarifsParType['retour simple'] = parseInt(document.getElementById('tarifRetourSimple').value) || 0;
+            database.settings.anneeScolaire = document.getElementById('anneeScolaire').value;
+            
+            saveDatabase();
+            showMessage('✅ Paramètres sauvegardés avec succès!', 'success');
+            updatePaiements(); // Recalculer les dettes avec les nouveaux tarifs
+        }
+
+        // Sauvegarde de la base de données
+        function backupDatabase() {
+            const data = JSON.stringify(database, null, 2);
+            const blob = new Blob([data], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `backup_transport_${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showMessage('✅ Sauvegarde créée avec succès!', 'success');
+        }
+
+        // Restauration de la base de données
+        function restoreDatabase(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const restoredData = JSON.parse(e.target.result);
+                    if (restoredData.eleves && restoredData.settings) {
+                        database = restoredData;
+                        saveDatabase();
+                        updateAdministration();
+                        updateStatistiques();
+                        updatePaiements();
+                        updateSystemInfo();
+                        loadSettings();
+                        showMessage('✅ Base de données restaurée avec succès!', 'success');
+                    } else {
+                        throw new Error('Format de fichier invalide');
+                    }
+                } catch (error) {
+                    showMessage('❌ Erreur lors de la restauration: ' + error.message, 'error');
+                }
+            };
+            reader.readAsText(file);
+            event.target.value = ''; // Reset file input
+        }
+
+        // Export CSV
+        function exportToCSV() {
+            const headers = ['ID', 'Prénom', 'Nom', 'Âge', 'Classe', 'Quartier', 'Type Transport', 'Montant Avancé', 'Total Payé', 'Dette', 'Téléphone Parent', 'Zone Passage'];
+            const rows = database.eleves.map(eleve => {
+                const tarifComplet = database.settings.tarifsParType[eleve.typeTransport] || 0;
+                const totalPaye = (eleve.paiements || []).reduce((sum, p) => sum + p.montant, 0);
+                const dette = Math.max(0, tarifComplet - totalPaye);
+                
+                return [
+                    eleve.id,
+                    eleve.prenom,
+                    eleve.nom,
+                    eleve.age,
+                    eleve.classe,
+                    eleve.quartier,
+                    eleve.typeTransport,
+                    eleve.montant,
+                    totalPaye,
+                    dette,
+                    eleve.telephoneParent,
+                    eleve.zonePassage
+                ];
+            });
+            
+            const csvContent = [headers, ...rows].map(row => row.join(',')).join('\n');
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `eleves_transport_${new Date().toISOString().split('T')[0]}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // Réinitialisation de la base de données
+        function resetDatabase() {
+            if (confirm('⚠️ ATTENTION: Cette action supprimera TOUTES les données de façon permanente. Continuer ?')) {
+                database = {
+                    eleves: [],
+                    nextId: 1,
+                    settings: {
+                        tarifsParType: {
+                            'aller-retour': 15000,
+                            'aller simple': 8000,
+                            'retour simple': 8000
+                        },
+                        anneeScolaire: '2024-2025'
+                    },
+                    historique: []
+                };
+                saveDatabase();
+                updateAdministration();
+                updateStatistiques();
+                updatePaiements();
+                updateSystemInfo();
+                loadSettings();
+                showMessage('🔄 Base de données réinitialisée.', 'error');
+            }
+        }
+
+        // Mise à jour des informations système
+        function updateSystemInfo() {
+            document.getElementById('infoNbEleves').textContent = database.eleves.length;
+            
+            try {
+                const lastSave = localStorage.getItem('lastSaveTime');
+                document.getElementById('infoLastSave').textContent = lastSave ? 
+                    new Date(lastSave).toLocaleString('fr-FR') : 'Jamais';
+            } catch (e) {
+                document.getElementById('infoLastSave').textContent = 'Non disponible';
+            }
+        }
+
+        // Mise à jour de l'onglet administration
+        function updateAdministration() {
+            displayElevesByQuartier(database.eleves);
+            updateStats();
+        }
+
+        // Affichage des élèves regroupés par quartier
+        function displayElevesByQuartier(eleves) {
+            const container = document.getElementById('quartiersContainer');
+            const noResults = document.getElementById('noResults');
+            
+            if (eleves.length === 0) {
+                container.innerHTML = '';
+                noResults.style.display = 'block';
+                return;
+            }
+            
+            noResults.style.display = 'none';
+            
+            // Regrouper par quartier
+            const quartiers = {};
+            eleves.forEach(eleve => {
+                if (!quartiers[eleve.quartier]) {
+                    quartiers[eleve.quartier] = [];
+                }
+                quartiers[eleve.quartier].push(eleve);
+            });
+            
+            // Générer le HTML
+            container.innerHTML = Object.keys(quartiers).map(quartier => `
+                <div class="quarter-card">
+                    <div class="quarter-title">📍 ${quartier} (${quartiers[quartier].length})</div>
+                    <ul class="student-list">
+                        ${quartiers[quartier].map(eleve => `
+                            <li class="student-item">
+                                <div class="student-info">
+                                    <div class="student-name">${eleve.prenom} ${eleve.nom}</div>
+                                    <div class="student-details">
+                                        ${eleve.classe} • ${eleve.typeTransport} • ${eleve.montant} FCFA<br>
+                                        📞 ${eleve.telephoneParent} • Zone: ${eleve.zonePassage}
+                                    </div>
+                                </div>
+                                <div class="student-actions">
+                                    <button class="btn btn-small btn-secondary" onclick="editEleve(${eleve.id})">✏️</button>
+                                    <button class="btn btn-small btn-danger" onclick="deleteEleve(${eleve.id})">🗑️</button>
+                                </div>
+                            </li>
+                        `).join('')}
+                    </ul>
+                </div>
+            `).join('');
+        }
+
+        // Mise à jour des statistiques globales
+        function updateStats() {
+            document.getElementById('totalEleves').textContent = database.eleves.length;
+            const quartiers = [...new Set(database.eleves.map(e => e.quartier))];
+            document.getElementById('totalQuartiers').textContent = quartiers.length;
+        }
+
+        // Mise à jour de l'onglet statistiques
+        function updateStatistiques() {
+            const eleves = database.eleves;
+            
+            // Statistiques générales
+            document.getElementById('statTotalEleves').textContent = eleves.length;
+            document.getElementById('statAllerRetour').textContent = 
+                eleves.filter(e => e.typeTransport === 'aller-retour').length;
+            document.getElementById('statAllerSimple').textContent = 
+                eleves.filter(e => e.typeTransport === 'aller simple').length;
+            document.getElementById('statRetourSimple').textContent = 
+                eleves.filter(e => e.typeTransport === 'retour simple').length;
+            
+            // Revenus par quartier
+            const revenusParQuartier = {};
+            eleves.forEach(eleve => {
+                if (!revenusParQuartier[eleve.quartier]) {
+                    revenusParQuartier[eleve.quartier] = 0;
+                }
+                revenusParQuartier[eleve.quartier] += eleve.montant;
+            });
+            
+            const revenusContainer = document.getElementById('revenusQuartiers');
+            revenusContainer.innerHTML = Object.keys(revenusParQuartier).map(quartier => `
+                <div class="quarter-card" style="margin-bottom: 15px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span><strong>${quartier}</strong></span>
+                        <span style="color: #28a745; font-weight: bold; font-size: 1.2rem;">
+                            ${revenusParQuartier[quartier].toLocaleString()} FCFA
+                        </span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Suppression d'un élève
+        function deleteEleve(id) {
+            if (confirm('Êtes-vous sûr de vouloir supprimer cet élève ?')) {
+                database.eleves = database.eleves.filter(e => e.id !== id);
+                saveDatabase();
+                updateAdministration();
+                updateStatistiques();
+                showMessage('✅ Élève supprimé avec succès !', 'success');
+            }
+        }
+
+        // Édition d'un élève (simplifié)
+        function editEleve(id) {
+            const eleve = database.eleves.find(e => e.id === id);
+            if (eleve) {
+                const newNom = prompt('Nouveau nom:', eleve.nom);
+                if (newNom && newNom !== eleve.nom) {
+                    eleve.nom = newNom;
+                    saveDatabase();
+                    updateAdministration();
+                    showMessage('✅ Informations mises à jour !', 'success');
+                }
+            }
+        }
+
+        // Export des données
+        function exportData() {
+            const data = JSON.stringify(database, null, 2);
+            const blob = new Blob([data], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `transport_scolaire_${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // Effacer toutes les données
+        function clearAllData() {
+            if (confirm('⚠️ ATTENTION: Cette action supprimera TOUTES les données de façon permanente. Continuer ?')) {
+                database = { eleves: [], nextId: 1 };
+                saveDatabase();
+                updateAdministration();
+                updateStatistiques();
+                showMessage('🗑️ Toutes les données ont été supprimées.', 'error');
+            }
+        }
+
+        // Gestion des messages
+        function showMessage(message, type) {
+            const messageDiv = document.getElementById('message');
+            messageDiv.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
+            setTimeout(() => {
+                messageDiv.innerHTML = '';
+            }, 5000);
+        }
+
+        // Sauvegarde de la base de données (simulation)
+        function saveDatabase() {
+            // En production, ici on sauvegarderait en base de données réelle
+            // Pour la démo, on utilise le localStorage (si disponible)
+            try {
+                if (typeof(Storage) !== "undefined") {
+                    localStorage.setItem('transportDatabase', JSON.stringify(database));
+                    localStorage.setItem('lastSaveTime', new Date().toISOString());
+                    
+                    // Auto-sauvegarde de sécurité toutes les 5 minutes
+                    setTimeout(autoSave, 300000);
+                }
+            } catch (e) {
+                console.log('Sauvegarde locale non disponible');
+            }
+        }
+
+        // Auto-sauvegarde périodique
+        function autoSave() {
+            saveDatabase();
+            console.log('Auto-sauvegarde effectuée à', new Date().toLocaleTimeString());
+        }
+
+        // Notification système
+        function showNotification(message, type = 'info') {
+            // Créer l'élément de notification
+            const notification = document.createElement('div');
+            notification.className = `notification notification-${type}`;
+            notification.innerHTML = `
+                <div style="display: flex; align-items: center; justify-content: space-between;">
+                    <span>${message}</span>
+                    <button onclick="this.parentElement.parentElement.remove()" style="background: none; border: none; color: white; font-size: 18px; cursor: pointer;">×</button>
+                </div>
+            `;
+            
+            // Styles pour la notification
+            Object.assign(notification.style, {
+                position: 'fixed',
+                top: '20px',
+                right: '20px',
+                padding: '15px 20px',
+                borderRadius: '10px',
+                color: 'white',
+                fontWeight: '500',
+                zIndex: '1000',
+                minWidth: '300px',
+                maxWidth: '500px',
+                boxShadow: '0 5px 15px rgba(0,0,0,0.3)',
+                animation: 'slideIn 0.3s ease-out'
+            });
+            
+            // Couleurs selon le type
+            const colors = {
+                success: 'linear-gradient(135deg, #28a745 0%, #20c997 100%)',
+                error: 'linear-gradient(135deg, #dc3545 0%, #c82333 100%)',
+                warning: 'linear-gradient(135deg, #ffc107 0%, #e0a800 100%)',
+                info: 'linear-gradient(135deg, #17a2b8 0%, #138496 100%)'
+            };
+            
+            notification.style.background = colors[type] || colors.info;
+            
+            document.body.appendChild(notification);
+            
+            // Suppression automatique après 5 secondes
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.style.animation = 'slideOut 0.3s ease-in';
+                    setTimeout(() => notification.remove(), 300);
+                }
+            }, 5000);
+        }
+
+        // Ajouter les animations CSS pour les notifications
+        const notificationStyles = document.createElement('style');
+        notificationStyles.textContent = `
+            @keyframes slideIn {
+                from { transform: translateX(100%); opacity: 0; }
+                to { transform: translateX(0); opacity: 1; }
+            }
+            @keyframes slideOut {
+                from { transform: translateX(0); opacity: 1; }
+                to { transform: translateX(100%); opacity: 0; }
+            }
+        `;
+        document.head.appendChild(notificationStyles);
+
+        // Génération de rapports avancés
+        function generateReport() {
+            const today = new Date();
+            const reportData = {
+                dateGeneration: today.toLocaleDateString('fr-FR'),
+                anneeScolaire: database.settings.anneeScolaire,
+                statistiques: {
+                    totalEleves: database.eleves.length,
+                    repartitionTransport: {},
+                    repartitionQuartier: {},
+                    statistiquesFinancieres: {
+                        totalRecettes: 0,
+                        totalDettes: 0,
+                        tauxRecouvrement: 0
+                    }
+                }
+            };
+            
+            let totalRecettes = 0, totalDettes = 0;
+            
+            database.eleves.forEach(eleve => {
+                // Répartition par type de transport
+                reportData.statistiques.repartitionTransport[eleve.typeTransport] = 
+                    (reportData.statistiques.repartitionTransport[eleve.typeTransport] || 0) + 1;
+                
+                // Répartition par quartier
+                reportData.statistiques.repartitionQuartier[eleve.quartier] = 
+                    (reportData.statistiques.repartitionQuartier[eleve.quartier] || 0) + 1;
+                
+                // Calculs financiers
+                const tarifComplet = database.settings.tarifsParType[eleve.typeTransport] || 0;
+                const totalPaye = (eleve.paiements || []).reduce((sum, p) => sum + p.montant, 0);
+                const dette = Math.max(0, tarifComplet - totalPaye);
+                
+                totalRecettes += totalPaye;
+                totalDettes += dette;
+            });
+            
+            reportData.statistiques.statistiquesFinancieres.totalRecettes = totalRecettes;
+            reportData.statistiques.statistiquesFinancieres.totalDettes = totalDettes;
+            reportData.statistiques.statistiquesFinancieres.tauxRecouvrement = 
+                totalRecettes > 0 ? Math.round((totalRecettes / (totalRecettes + totalDettes)) * 100) : 0;
+            
+            return reportData;
+        }
+
+        // Export du rapport PDF (simulation)
+        function exportReportPDF() {
+            const report = generateReport();
+            
+            const htmlContent = `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>Rapport Transport Scolaire</title>
+                    <style>
+                        body { font-family: Arial, sans-serif; margin: 40px; }
+                        .header { text-align: center; margin-bottom: 30px; }
+                        .section { margin-bottom: 25px; }
+                        .stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin: 20px 0; }
+                        .stat-item { background: #f8f9fa; padding: 15px; border-radius: 8px; text-align: center; }
+                        table { width: 100%; border-collapse: collapse; margin: 15px 0; }
+                        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+                        th { background-color: #667eea; color: white; }
+                    </style>
+                </head>
+                <body>
+                    <div class="header">
+                        <h1>🚌 Rapport Transport Scolaire</h1>
+                        <p>Année scolaire: ${report.anneeScolaire}</p>
+                        <p>Généré le: ${report.dateGeneration}</p>
+                    </div>
+                    
+                    <div class="section">
+                        <h2>📊 Statistiques Générales</h2>
+                        <div class="stat-grid">
+                            <div class="stat-item">
+                                <h3>${report.statistiques.totalEleves}</h3>
+                                <p>Total Élèves</p>
+                            </div>
+                            <div class="stat-item">
+                                <h3>${report.statistiques.statistiquesFinancieres.totalRecettes.toLocaleString()}</h3>
+                                <p>Total Recettes (FCFA)</p>
+                            </div>
+                            <div class="stat-item">
+                                <h3>${report.statistiques.statistiquesFinancieres.tauxRecouvrement}%</h3>
+                                <p>Taux de Recouvrement</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="section">
+                        <h2>🚍 Répartition par Type de Transport</h2>
+                        <table>
+                            <tr><th>Type</th><th>Nombre d'élèves</th><th>Pourcentage</th></tr>
+                            ${Object.entries(report.statistiques.repartitionTransport).map(([type, count]) => `
+                                <tr>
+                                    <td>${type}</td>
+                                    <td>${count}</td>
+                                    <td>${Math.round((count / report.statistiques.totalEleves) * 100)}%</td>
+                                </tr>
+                            `).join('')}
+                        </table>
+                    </div>
+                    
+                    <div class="section">
+                        <h2>📍 Répartition par Quartier</h2>
+                        <table>
+                            <tr><th>Quartier</th><th>Nombre d'élèves</th><th>Pourcentage</th></tr>
+                            ${Object.entries(report.statistiques.repartitionQuartier).map(([quartier, count]) => `
+                                <tr>
+                                    <td>${quartier}</td>
+                                    <td>${count}</td>
+                                    <td>${Math.round((count / report.statistiques.totalEleves) * 100)}%</td>
+                                </tr>
+                            `).join('')}
+                        </table>
+                    </div>
+                </body>
+                </html>
+            `;
+            
+            const blob = new Blob([htmlContent], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `rapport_transport_${new Date().toISOString().split('T')[0]}.html`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            showNotification('📋 Rapport généré et téléchargé avec succès!', 'success');
+        }
+
+        // Validation des données
+        function validateEleveData(eleve) {
+            const errors = [];
+            
+            if (!eleve.nom || eleve.nom.length < 2) {
+                errors.push('Le nom doit contenir au moins 2 caractères');
+            }
+            
+            if (!eleve.prenom || eleve.prenom.length < 2) {
+                errors.push('Le prénom doit contenir au moins 2 caractères');
+            }
+            
+            if (!eleve.age || eleve.age < 3 || eleve.age > 18) {
+                errors.push('L\'âge doit être entre 3 et 18 ans');
+            }
+            
+            if (!eleve.telephoneParent || !/^\+?[0-9\s\-()]{8,15}$/.test(eleve.telephoneParent)) {
+                errors.push('Le numéro de téléphone n\'est pas valide');
+            }
+            
+            if (!eleve.montant || eleve.montant < 0) {
+                errors.push('Le montant doit être positif');
+            }
+            
+            return errors;
+        }
+
+        // Détection des doublons
+        function checkDuplicate(nouvelEleve) {
+            return database.eleves.find(eleve => 
+                eleve.nom.toLowerCase() === nouvelEleve.nom.toLowerCase() &&
+                eleve.prenom.toLowerCase() === nouvelEleve.prenom.toLowerCase() &&
+                eleve.quartier === nouvelEleve.quartier
+            );
+        }
+
+        // Alertes automatiques
+        function checkAlerts() {
+            const alerts = [];
+            
+            // Élèves avec des dettes importantes
+            const elevesEndettes = database.eleves.filter(eleve => {
+                const tarifComplet = database.settings.tarifsParType[eleve.typeTransport] || 0;
+                const totalPaye = (eleve.paiements || []).reduce((sum, p) => sum + p.montant, 0);
+                const dette = Math.max(0, tarifComplet - totalPaye);
+                return dette > 5000; // Dette supérieure à 5000 FCFA
+            });
+            
+            if (elevesEndettes.length > 0) {
+                alerts.push({
+                    type: 'warning',
+                    message: `⚠️ ${elevesEndettes.length} élève(s) ont une dette supérieure à 5000 FCFA`,
+                    action: () => showTab('paiements')
+                });
+            }
+            
+            // Seuil d'élèves par quartier
+            const quartiers = {};
+            database.eleves.forEach(eleve => {
+                quartiers[eleve.quartier] = (quartiers[eleve.quartier] || 0) + 1;
+            });
+            
+            Object.entries(quartiers).forEach(([quartier, count]) => {
+                if (count > 20) { // Plus de 20 élèves dans un quartier
+                    alerts.push({
+                        type: 'info',
+                        message: `ℹ️ Le quartier ${quartier} a ${count} élèves inscrits`,
+                        action: () => showTab('administration')
+                    });
+                }
+            });
+            
+            return alerts;
+        }
+
+        // Affichage des alertes
+        function displayAlerts() {
+            const alerts = checkAlerts();
+            const alertsContainer = document.getElementById('alertsContainer');
+            
+            if (!alertsContainer) {
+                // Créer le conteneur d'alertes s'il n'existe pas
+                const container = document.createElement('div');
+                container.id = 'alertsContainer';
+                container.style.cssText = 'margin-bottom: 20px;';
+                document.querySelector('.tab-content.active').prepend(container);
+            }
+            
+            document.getElementById('alertsContainer').innerHTML = alerts.map(alert => `
+                <div class="alert alert-${alert.type}" onclick="${alert.action ? alert.action.toString().replace('function', '').replace('{', '').replace('}', '') : ''}" 
+                     style="${alert.action ? 'cursor: pointer;' : ''}">
+                    ${alert.message}
+                    ${alert.action ? ' <span style="font-size: 0.8em;">(Cliquer pour voir)</span>' : ''}
+                </div>
+            `).join('');
+        }
+
+        // Chargement de la base de données
+        function loadDatabase() {
+            try {
+                if (typeof(Storage) !== "undefined") {
+                    const saved = localStorage.getItem('transportDatabase');
+                    if (saved) {
+                        database = JSON.parse(saved);
+                    }
+                }
+            } catch (e) {
+                console.log('Chargement des données local non disponible');
+            }
+        }
+    </script>
+</body>
+</html>
