@@ -1,0 +1,960 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Plateforme de Gestion de Projets Étudiants | JUNIA ISEN</title>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+  * { font-family: 'Inter', sans-serif; }
+  body { background-color: #F7F5F1; }
+  ::-webkit-scrollbar { width: 8px; }
+  ::-webkit-scrollbar-thumb { background: #D6D1C4; border-radius: 4px; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState, useEffect, useMemo, useRef } = React;
+
+/*
+  Modèle de données inspiré du schéma PostgreSQL original du projet :
+  table projects (id, title, status, description, chefDeProjet, membres[], deadline)
+  table tasks (id, project_id FK, title, done, assignee)
+
+  Hiérarchie à 3 rôles :
+  - responsable : vue d'ensemble sur tous les projets, crée les projets et
+    désigne le chef de projet, discute avec chaque chef de projet.
+  - chef de projet : gère un projet dont il a la charge (créer/modifier/
+    supprimer des tâches, assigner), discute avec ses membres et avec le
+    responsable.
+  - membre : contribue aux tâches assignées, discute avec son chef de projet.
+
+  Deux fils de discussion par projet :
+  - chatMembres : membres <-> chef de projet
+  - chatResponsable : chef de projet <-> responsable
+
+  Persistée en localStorage, authentification JWT simulée côté client.
+*/
+
+const Icon = {
+  Dashboard: (p) => <svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>,
+  Plus: (p) => <svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>,
+  List: (p) => <svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>,
+  PieChart: (p) => <svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>,
+  BarChart: (p) => <svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>,
+  Check: (p) => <svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>,
+  X: (p) => <svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>,
+  Trash: (p) => <svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>,
+  Edit: (p) => <svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4z"/></svg>,
+  LogOut: (p) => <svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>,
+  Shield: (p) => <svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>,
+  Star: (p) => <svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>,
+  User: (p) => <svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>,
+  Folder: (p) => <svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>,
+  MessageCircle: (p) => <svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>,
+  Send: (p) => <svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>,
+  File: (p) => <svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>,
+  Upload: (p) => <svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>,
+  Download: (p) => <svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>,
+};
+
+const STATUS_STYLES = {
+  "En cours": { border: "#5B4B8A", bg: "#EFEAFB", text: "#5B4B8A" },
+  "Terminé": { border: "#2F6E4E", bg: "#E8F3EC", text: "#2F6E4E" },
+  "En retard": { border: "#B54834", bg: "#FBEAE6", text: "#B54834" },
+};
+
+const RESPONSABLES = ["prof.martin"];
+const CHEFS_DE_PROJET = ["camille.r", "nick.bopda", "yanis.t"];
+
+const SEED_PROJECTS = [
+  {
+    id: 1,
+    title: "Refonte du site associatif BDE",
+    status: "En cours",
+    description: "Modernisation du site de l'association étudiante : nouvelle interface d'inscription aux événements et espace membres.",
+    chefDeProjet: "Camille R.",
+    membres: ["Nick B.", "Yanis T."],
+    deadline: "2026-11-15",
+    tasks: [
+      { id: 1, title: "Maquettes Figma validées", done: true, assignee: "Camille R." },
+      { id: 2, title: "Modélisation base de données", done: true, assignee: "Nick B." },
+      { id: 3, title: "API REST authentification", done: false, assignee: "Nick B." },
+      { id: 4, title: "Intégration front React", done: false, assignee: "Yanis T." },
+    ],
+    chatMembres: [
+      { id: 1, author: "Nick B.", text: "L'API d'authentification avance bien, je pousse ça demain.", ts: "2026-09-10 09:12" },
+      { id: 2, author: "Camille R.", text: "Parfait, tiens-moi au courant si tu bloques sur JWT.", ts: "2026-09-10 09:20" },
+    ],
+    chatResponsable: [
+      { id: 1, author: "Camille R.", text: "Le projet avance comme prévu, on vise toujours mi-novembre.", ts: "2026-09-09 14:00" },
+    ],
+    documents: [],
+  },
+  {
+    id: 2,
+    title: "Suivi des stages 2ème année",
+    status: "Terminé",
+    description: "Outil de centralisation des conventions de stage et de suivi des retours étudiants pour le service scolarité.",
+    chefDeProjet: "Nick B.",
+    membres: ["Sarah L."],
+    deadline: "2026-06-01",
+    tasks: [
+      { id: 1, title: "Cahier des charges", done: true, assignee: "Nick B." },
+      { id: 2, title: "Base PostgreSQL + migrations", done: true, assignee: "Nick B." },
+      { id: 3, title: "Export PDF des conventions", done: true, assignee: "Sarah L." },
+    ],
+    chatMembres: [],
+    chatResponsable: [
+      { id: 1, author: "Nick B.", text: "Projet livré et validé par le service scolarité.", ts: "2026-06-01 10:00" },
+    ],
+    documents: [],
+  },
+  {
+    id: 3,
+    title: "Réservation des salles de projet",
+    status: "En retard",
+    description: "Calendrier partagé pour réserver les salles de travail en groupe, avec notifications de conflit d'horaire.",
+    chefDeProjet: "Yanis T.",
+    membres: ["Nick B.", "Camille R."],
+    deadline: "2026-09-30",
+    tasks: [
+      { id: 1, title: "Schéma relationnel salles/créneaux", done: true, assignee: "Nick B." },
+      { id: 2, title: "Détection des conflits", done: false, assignee: "Yanis T." },
+      { id: 3, title: "Vue calendrier", done: false, assignee: "Camille R." },
+    ],
+    chatMembres: [
+      { id: 1, author: "Yanis T.", text: "On a pris du retard sur la détection de conflits, besoin d'aide.", ts: "2026-09-08 16:30" },
+    ],
+    chatResponsable: [
+      { id: 1, author: "Yanis T.", text: "On risque de dépasser l'échéance de quelques jours, je vous tiens informé.", ts: "2026-09-08 17:00" },
+    ],
+    documents: [],
+  },
+];
+
+function encodeFakeJWT(username, role) {
+  const header = btoa(JSON.stringify({ alg: "HS256", typ: "JWT" }));
+  const payload = btoa(JSON.stringify({ sub: username, role, iat: Date.now() }));
+  return `${header}.${payload}.demo-signature`;
+}
+
+function decodeFakeJWT(token) {
+  try {
+    const [, payload] = token.split(".");
+    return JSON.parse(atob(payload));
+  } catch {
+    return null;
+  }
+}
+
+function loadProjects() {
+  const raw = localStorage.getItem("junia_projects_db_v2");
+  if (raw) return JSON.parse(raw);
+  localStorage.setItem("junia_projects_db_v2", JSON.stringify(SEED_PROJECTS));
+  return SEED_PROJECTS;
+}
+
+function saveProjects(projects) {
+  localStorage.setItem("junia_projects_db_v2", JSON.stringify(projects));
+}
+
+function projectProgress(project) {
+  if (project.tasks.length === 0) return 0;
+  return Math.round((project.tasks.filter((t) => t.done).length / project.tasks.length) * 100);
+}
+
+function DonutChart({ done, remaining, size = 140 }) {
+  const total = done + remaining || 1;
+  const radius = size / 2 - 14;
+  const circumference = 2 * Math.PI * radius;
+  const doneLength = circumference * (done / total);
+
+  return (
+    <div className="flex items-center gap-4">
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+        <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="#E7E5DF" strokeWidth="14" />
+        <circle
+          cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="#5B4B8A" strokeWidth="14"
+          strokeDasharray={`${doneLength} ${circumference}`} strokeLinecap="round"
+          transform={`rotate(-90 ${size / 2} ${size / 2})`}
+        />
+        <text x={size / 2} y={size / 2 - 4} textAnchor="middle" className="fill-stone-900" style={{ fontSize: "22px", fontWeight: 700 }}>
+          {total ? Math.round((done / total) * 100) : 0}%
+        </text>
+        <text x={size / 2} y={size / 2 + 16} textAnchor="middle" className="fill-stone-400" style={{ fontSize: "11px" }}>terminé</text>
+      </svg>
+      <div className="text-sm">
+        <div className="flex items-center gap-2 mb-1">
+          <span className="w-3 h-3 rounded-full inline-block" style={{ backgroundColor: "#5B4B8A" }} />
+          <span className="text-stone-600">Faites : <strong className="text-stone-900">{done}</strong></span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="w-3 h-3 rounded-full inline-block" style={{ backgroundColor: "#E7E5DF" }} />
+          <span className="text-stone-600">Restantes : <strong className="text-stone-900">{remaining}</strong></span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ProjectsBarChart({ projects }) {
+  const chartHeight = 160;
+  return (
+    <div className="flex items-end gap-6 h-[200px] pt-4 overflow-x-auto">
+      {projects.map((p) => {
+        const pct = projectProgress(p);
+        const barHeight = Math.round((pct / 100) * chartHeight);
+        const style = STATUS_STYLES[p.status];
+        return (
+          <div key={p.id} className="flex flex-col items-center gap-2 shrink-0">
+            <div className="relative flex items-end" style={{ height: chartHeight }}>
+              <div className="w-10 rounded-t" style={{ height: `${Math.max(barHeight, 2)}px`, backgroundColor: style.text }} title={`${pct}% terminé`} />
+            </div>
+            <span className="text-xs font-semibold text-stone-700">{pct}%</span>
+            <span className="text-xs text-stone-400 text-center max-w-[90px] truncate">{p.title}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function LoginScreen({ onLogin }) {
+  const [name, setName] = useState("");
+
+  const submit = () => {
+    const key = name.trim().toLowerCase();
+    if (!key) return;
+    let role = "membre";
+    if (RESPONSABLES.includes(key)) role = "responsable";
+    else if (CHEFS_DE_PROJET.includes(key)) role = "chef";
+    onLogin(name.trim(), role);
+  };
+
+  return (
+    <div className="min-h-screen flex items-center justify-center px-4">
+      <div className="max-w-sm w-full">
+        <div className="border-l-4 border-[#5B4B8A] pl-4 mb-8">
+          <p className="text-sm text-stone-500">JUNIA ISEN</p>
+          <h1 className="text-2xl font-bold text-stone-900">Gestion de projets étudiants</h1>
+        </div>
+        <label className="block text-sm font-medium text-stone-700 mb-2">Nom d'utilisateur</label>
+        <input
+          className="w-full border border-stone-300 rounded px-3 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-[#5B4B8A]"
+          placeholder="ex : nick.bopda"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && submit()}
+        />
+        <button
+          className="w-full flex items-center justify-center gap-2 bg-[#5B4B8A] text-white font-semibold py-2 rounded hover:bg-[#4a3d72] transition-colors disabled:opacity-40"
+          disabled={!name.trim()}
+          onClick={submit}
+        >
+          <Icon.LogOut className="w-4 h-4 rotate-180" />
+          Se connecter
+        </button>
+        <p className="text-xs text-stone-400 mt-4">
+          Démo : "prof.martin" = responsable · "camille.r", "nick.bopda" ou "yanis.t" = chef de projet · tout autre nom = membre. Jeton JWT simulé côté client.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function TaskRow({ task, onToggle, onDelete, onRename, canEdit }) {
+  const [editing, setEditing] = useState(false);
+  const [title, setTitle] = useState(task.title);
+
+  const saveRename = () => {
+    if (title.trim()) onRename(title.trim());
+    setEditing(false);
+  };
+
+  return (
+    <div className="flex items-center justify-between py-2 border-b border-stone-200 last:border-0 gap-2">
+      <label className={`flex items-center gap-3 flex-1 min-w-0 ${canEdit ? "cursor-pointer" : "cursor-default"}`}>
+        <input type="checkbox" checked={task.done} onChange={canEdit ? onToggle : undefined} disabled={!canEdit} className="w-4 h-4 accent-[#5B4B8A] shrink-0" />
+        {editing ? (
+          <input
+            autoFocus
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            onBlur={saveRename}
+            onKeyDown={(e) => e.key === "Enter" && saveRename()}
+            className="border border-stone-300 rounded px-2 py-0.5 text-sm flex-1"
+          />
+        ) : (
+          <span className={`truncate ${task.done ? "line-through text-stone-400" : "text-stone-800"}`}>{task.title}</span>
+        )}
+      </label>
+      <span className="text-xs text-stone-500 shrink-0">{task.assignee}</span>
+      {canEdit && !editing && (
+        <div className="flex items-center gap-2 shrink-0">
+          <button onClick={() => setEditing(true)} className="text-stone-400 hover:text-[#5B4B8A]" title="Modifier">
+            <Icon.Edit className="w-3.5 h-3.5" />
+          </button>
+          <button onClick={onDelete} className="text-stone-400 hover:text-rose-600" title="Supprimer">
+            <Icon.Trash className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AddTaskForm({ members, onAdd }) {
+  const [title, setTitle] = useState("");
+  const [assignee, setAssignee] = useState(members[0] || "");
+
+  const submit = (e) => {
+    e.preventDefault();
+    if (!title.trim() || !assignee) return;
+    onAdd({ title: title.trim(), assignee });
+    setTitle("");
+  };
+
+  return (
+    <form onSubmit={submit} className="flex gap-2 mt-3">
+      <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Nouvelle tâche" className="flex-1 border border-stone-300 rounded px-3 py-1.5 text-sm" />
+      <select value={assignee} onChange={(e) => setAssignee(e.target.value)} className="w-36 border border-stone-300 rounded px-2 py-1.5 text-sm">
+        {members.map((m) => <option key={m} value={m}>{m}</option>)}
+      </select>
+      <button type="submit" className="flex items-center gap-1 bg-[#5B4B8A] text-white text-sm font-medium px-3 py-1.5 rounded hover:bg-[#4a3d72]">
+        <Icon.Plus className="w-4 h-4" />
+        Ajouter
+      </button>
+    </form>
+  );
+}
+
+function ChatThread({ messages, currentUser, onSend, placeholder }) {
+  const [text, setText] = useState("");
+  const endRef = useRef(null);
+
+  useEffect(() => {
+    endRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages.length]);
+
+  const submit = (e) => {
+    e.preventDefault();
+    if (!text.trim()) return;
+    onSend(text.trim());
+    setText("");
+  };
+
+  return (
+    <div className="bg-white border border-stone-200 rounded flex flex-col h-80">
+      <div className="flex-1 overflow-y-auto p-4 space-y-3">
+        {messages.length === 0 && <p className="text-sm text-stone-400">Aucun message pour l'instant.</p>}
+        {messages.map((m) => {
+          const mine = m.author === currentUser;
+          return (
+            <div key={m.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
+              <div className={`max-w-[75%] rounded-lg px-3 py-2 text-sm ${mine ? "bg-[#5B4B8A] text-white" : "bg-stone-100 text-stone-800"}`}>
+                {!mine && <p className="text-xs font-semibold mb-0.5 opacity-70">{m.author}</p>}
+                <p>{m.text}</p>
+                <p className={`text-[10px] mt-1 ${mine ? "text-white/70" : "text-stone-400"}`}>{m.ts}</p>
+              </div>
+            </div>
+          );
+        })}
+        <div ref={endRef} />
+      </div>
+      <form onSubmit={submit} className="flex gap-2 border-t border-stone-200 p-3">
+        <input
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder={placeholder}
+          className="flex-1 border border-stone-300 rounded px-3 py-1.5 text-sm"
+        />
+        <button type="submit" className="flex items-center gap-1 bg-[#5B4B8A] text-white text-sm font-medium px-3 py-1.5 rounded hover:bg-[#4a3d72]">
+          <Icon.Send className="w-4 h-4" />
+        </button>
+      </form>
+    </div>
+  );
+}
+
+function formatFileSize(bytes) {
+  if (bytes < 1024) return `${bytes} o`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} Ko`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} Mo`;
+}
+
+const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2 Mo, limite raisonnable pour un stockage navigateur
+
+function DocumentsPanel({ documents, currentUser, canManageAll, onUpload, onReplace, onDelete }) {
+  const [error, setError] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const [replacingId, setReplacingId] = useState(null);
+  const fileInputRef = useRef(null);
+  const replaceInputRefs = useRef({});
+
+  const readAsDoc = (file) =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve({
+        name: file.name,
+        size: file.size,
+        type: file.type || "application/octet-stream",
+        dataUrl: reader.result,
+        author: currentUser,
+        ts: new Date().toISOString().slice(0, 16).replace("T", " "),
+      });
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+
+  const handleFile = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setError("");
+
+    if (file.size > MAX_FILE_SIZE) {
+      setError(`Fichier trop volumineux (${formatFileSize(file.size)}). Limite de démo : ${formatFileSize(MAX_FILE_SIZE)} par fichier.`);
+      e.target.value = "";
+      return;
+    }
+
+    setUploading(true);
+    readAsDoc(file)
+      .then((doc) => onUpload(doc))
+      .catch(() => setError("Erreur de lecture du fichier."))
+      .finally(() => { setUploading(false); e.target.value = ""; });
+  };
+
+  const handleReplace = (e, docId) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setError("");
+
+    if (file.size > MAX_FILE_SIZE) {
+      setError(`Fichier trop volumineux (${formatFileSize(file.size)}). Limite de démo : ${formatFileSize(MAX_FILE_SIZE)} par fichier.`);
+      e.target.value = "";
+      return;
+    }
+
+    setReplacingId(docId);
+    readAsDoc(file)
+      .then((doc) => onReplace(docId, doc))
+      .catch(() => setError("Erreur de lecture du fichier."))
+      .finally(() => { setReplacingId(null); e.target.value = ""; });
+  };
+
+  const downloadFile = (doc) => {
+    const link = document.createElement("a");
+    link.href = doc.dataUrl;
+    link.download = doc.name;
+    link.click();
+  };
+
+  return (
+    <div className="bg-white border border-stone-200 rounded p-4">
+      <div className="space-y-2 mb-3">
+        {documents.length === 0 && <p className="text-sm text-stone-400">Aucun document partagé pour l'instant.</p>}
+        {documents.map((doc) => {
+          const canManageThis = canManageAll || doc.author === currentUser;
+          return (
+            <div key={doc.id} className="flex items-center justify-between gap-2 border border-stone-200 rounded px-3 py-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <Icon.File className="w-4 h-4 text-stone-400 shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-stone-800 truncate">{doc.name}</p>
+                  <p className="text-xs text-stone-400">{formatFileSize(doc.size)} · {doc.author} · {doc.ts}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <button onClick={() => downloadFile(doc)} className="text-[#5B4B8A] hover:text-[#4a3d72]" title="Télécharger">
+                  <Icon.Download className="w-4 h-4" />
+                </button>
+                {canManageThis && (
+                  <>
+                    <label className="text-stone-400 hover:text-[#5B4B8A] cursor-pointer" title="Modifier (remplacer le fichier)">
+                      {replacingId === doc.id ? (
+                        <span className="text-xs">...</span>
+                      ) : (
+                        <Icon.Edit className="w-4 h-4" />
+                      )}
+                      <input
+                        type="file"
+                        className="hidden"
+                        disabled={replacingId === doc.id}
+                        onChange={(e) => handleReplace(e, doc.id)}
+                      />
+                    </label>
+                    <button onClick={() => onDelete(doc.id)} className="text-stone-400 hover:text-rose-600" title="Supprimer">
+                      <Icon.Trash className="w-4 h-4" />
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {error && <p className="text-sm text-rose-600 mb-2">{error}</p>}
+
+      <label className="flex items-center justify-center gap-2 border-2 border-dashed border-stone-300 rounded px-4 py-3 text-sm text-stone-500 cursor-pointer hover:border-[#5B4B8A] hover:text-[#5B4B8A] transition-colors">
+        <Icon.Upload className="w-4 h-4" />
+        {uploading ? "Envoi en cours..." : "Choisir un fichier à partager"}
+        <input ref={fileInputRef} type="file" onChange={handleFile} className="hidden" disabled={uploading} />
+      </label>
+      <p className="text-xs text-stone-400 mt-2">
+        Démo : fichiers stockés localement dans le navigateur, limite de {formatFileSize(MAX_FILE_SIZE)} par fichier. Chacun peut modifier ou supprimer les documents qu'il a lui-même partagés.
+      </p>
+    </div>
+  );
+}
+
+function ProjectDetail({ project, currentUser, role, onToggleTask, onAddTask, onDeleteTask, onRenameTask, onDeleteProject, onSendMembresChat, onSendResponsableChat, onUploadDocument, onReplaceDocument, onDeleteDocument }) {
+  const style = STATUS_STYLES[project.status];
+  const done = project.tasks.filter((t) => t.done).length;
+  const remaining = project.tasks.length - done;
+  // Le rôle sur CE projet dépend de sa position dans CE projet, pas du rôle
+  // global du compte : quelqu'un désigné chef sur un projet reste membre
+  // normal sur les projets où il n'est que membre.
+  const isChefOfThis = project.chefDeProjet === currentUser;
+  const isMembreOfThis = project.membres.includes(currentUser);
+  const isResponsable = role === "responsable";
+  const canManageTasks = isChefOfThis;
+  const allMembers = [project.chefDeProjet, ...project.membres];
+
+  return (
+    <div>
+      <div className="flex items-start justify-between mb-1">
+        <h2 className="text-xl font-bold text-stone-900">{project.title}</h2>
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-semibold px-2 py-1 rounded" style={{ backgroundColor: style.bg, color: style.text }}>
+            {project.status}
+          </span>
+          {isResponsable && (
+            <button onClick={() => { if (confirm("Supprimer ce projet ?")) onDeleteProject(project.id); }} className="text-rose-500 hover:text-rose-700" title="Supprimer le projet">
+              <Icon.Trash className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+      </div>
+      <p className="text-sm text-stone-500 mb-1">
+        Chef de projet : {project.chefDeProjet} · Échéance : {project.deadline}
+      </p>
+      <p className="text-sm text-stone-500 mb-4">Membres : {project.membres.join(", ") || "aucun"}</p>
+      <p className="text-stone-700 mb-6">{project.description}</p>
+
+      <div className="mb-6 bg-white border border-stone-200 rounded p-4">
+        <p className="flex items-center gap-2 text-sm font-semibold text-stone-800 mb-3">
+          <Icon.PieChart className="w-4 h-4 text-stone-500" />
+          Avancement des tâches
+        </p>
+        <DonutChart done={done} remaining={remaining} />
+      </div>
+
+      <h3 className="flex items-center gap-2 font-semibold text-stone-800 mb-2">
+        <Icon.List className="w-4 h-4 text-stone-500" />
+        Tâches
+      </h3>
+      <div>
+        {project.tasks.map((t) => (
+          <TaskRow
+            key={t.id}
+            task={t}
+            canEdit={canManageTasks}
+            onToggle={() => onToggleTask(project.id, t.id)}
+            onDelete={() => onDeleteTask(project.id, t.id)}
+            onRename={(title) => onRenameTask(project.id, t.id, title)}
+          />
+        ))}
+        {project.tasks.length === 0 && <p className="text-sm text-stone-400 py-2">Aucune tâche pour l'instant.</p>}
+      </div>
+      {canManageTasks && <AddTaskForm members={allMembers} onAdd={(task) => onAddTask(project.id, task)} />}
+
+      <div className="mt-8">
+        <h3 className="flex items-center gap-2 font-semibold text-stone-800 mb-2">
+          <Icon.File className="w-4 h-4 text-stone-500" />
+          Documents partagés
+        </h3>
+        <DocumentsPanel
+          documents={project.documents || []}
+          currentUser={currentUser}
+          canManageAll={isChefOfThis || isResponsable}
+          onUpload={(doc) => onUploadDocument(project.id, doc)}
+          onReplace={(docId, doc) => onReplaceDocument(project.id, docId, doc)}
+          onDelete={(docId) => onDeleteDocument(project.id, docId)}
+        />
+      </div>
+
+      {(isMembreOfThis || isChefOfThis) && (
+        <div className="mt-8">
+          <h3 className="flex items-center gap-2 font-semibold text-stone-800 mb-2">
+            <Icon.MessageCircle className="w-4 h-4 text-stone-500" />
+            Discussion avec {isChefOfThis ? "les membres" : "le chef de projet"}
+          </h3>
+          <ChatThread
+            messages={project.chatMembres}
+            currentUser={currentUser}
+            onSend={(text) => onSendMembresChat(project.id, text)}
+            placeholder="Écrire un message à l'équipe..."
+          />
+        </div>
+      )}
+
+      {(isChefOfThis || isResponsable) && (
+        <div className="mt-8">
+          <h3 className="flex items-center gap-2 font-semibold text-stone-800 mb-2">
+            <Icon.MessageCircle className="w-4 h-4 text-stone-500" />
+            Discussion avec {isResponsable ? "le chef de projet" : "le responsable"}
+          </h3>
+          <ChatThread
+            messages={project.chatResponsable}
+            currentUser={currentUser}
+            onSend={(text) => onSendResponsableChat(project.id, text)}
+            placeholder="Écrire un message..."
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CreateProjectForm({ onCreate }) {
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [chefDeProjet, setChefDeProjet] = useState(CHEFS_DE_PROJET[0] || "");
+  const [membres, setMembres] = useState("");
+  const [deadline, setDeadline] = useState("");
+  const [success, setSuccess] = useState(false);
+
+  const submit = (e) => {
+    e.preventDefault();
+    if (!title.trim() || !chefDeProjet || !deadline) return;
+    onCreate({
+      title: title.trim(),
+      description: description.trim(),
+      chefDeProjet,
+      membres: membres.split(",").map((m) => m.trim()).filter(Boolean),
+      deadline,
+      status: "En cours",
+      tasks: [],
+      chatMembres: [],
+      chatResponsable: [],
+      documents: [],
+    });
+    setTitle(""); setDescription(""); setMembres(""); setDeadline("");
+    setSuccess(true);
+    setTimeout(() => setSuccess(false), 2000);
+  };
+
+  return (
+    <div className="bg-white border border-stone-200 rounded p-6 max-w-lg">
+      <p className="flex items-center gap-2 font-semibold text-stone-800 text-sm mb-4">
+        <Icon.Plus className="w-4 h-4 text-stone-500" />
+        Créer un nouveau projet
+      </p>
+      <form onSubmit={submit} className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-stone-700 mb-1">Titre du projet</label>
+          <input value={title} onChange={(e) => setTitle(e.target.value)} className="w-full border border-stone-300 rounded px-3 py-2" />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-stone-700 mb-1">Description</label>
+          <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows="3" className="w-full border border-stone-300 rounded px-3 py-2" />
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-stone-700 mb-1">Chef de projet</label>
+            <select value={chefDeProjet} onChange={(e) => setChefDeProjet(e.target.value)} className="w-full border border-stone-300 rounded px-3 py-2">
+              {CHEFS_DE_PROJET.map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-stone-700 mb-1">Échéance</label>
+            <input type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} className="w-full border border-stone-300 rounded px-3 py-2" />
+          </div>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-stone-700 mb-1">Membres (séparés par une virgule)</label>
+          <input value={membres} onChange={(e) => setMembres(e.target.value)} placeholder="ex : Nick B., Sarah L." className="w-full border border-stone-300 rounded px-3 py-2" />
+        </div>
+        {success && <p className="flex items-center gap-1 text-sm text-emerald-600"><Icon.Check className="w-4 h-4" />Projet créé avec succès.</p>}
+        <button type="submit" className="flex items-center gap-2 bg-[#5B4B8A] text-white font-semibold px-4 py-2 rounded hover:bg-[#4a3d72]">
+          <Icon.Plus className="w-4 h-4" />
+          Créer le projet
+        </button>
+      </form>
+      <p className="text-xs text-stone-400 mt-4">
+        Le chef de projet désigné devra se connecter avec son propre nom pour gérer les tâches et discuter avec l'équipe.
+      </p>
+    </div>
+  );
+}
+
+function OverviewTab({ projects }) {
+  const totalTasks = projects.reduce((acc, p) => acc + p.tasks.length, 0);
+  const doneTasks = projects.reduce((acc, p) => acc + p.tasks.filter((t) => t.done).length, 0);
+
+  return (
+    <div>
+      <div className="grid grid-cols-3 gap-4 mb-6">
+        <div className="bg-white border border-stone-200 rounded p-4 text-center">
+          <Icon.Folder className="w-5 h-5 mx-auto mb-2 text-[#5B4B8A]" />
+          <p className="text-sm text-stone-500 mb-1">Projets</p>
+          <p className="text-3xl font-bold text-stone-900">{projects.length}</p>
+        </div>
+        <div className="bg-white border border-stone-200 rounded p-4 text-center">
+          <Icon.Check className="w-5 h-5 mx-auto mb-2 text-emerald-500" />
+          <p className="text-sm text-stone-500 mb-1">Tâches terminées</p>
+          <p className="text-3xl font-bold text-emerald-600">{doneTasks} / {totalTasks}</p>
+        </div>
+        <div className="bg-white border border-stone-200 rounded p-4 text-center">
+          <Icon.BarChart className="w-5 h-5 mx-auto mb-2 text-[#5B4B8A]" />
+          <p className="text-sm text-stone-500 mb-1">Avancement global</p>
+          <p className="text-3xl font-bold text-stone-900">{totalTasks ? Math.round((doneTasks / totalTasks) * 100) : 0}%</p>
+        </div>
+      </div>
+
+      <div className="bg-white border border-stone-200 rounded p-6">
+        <p className="flex items-center gap-2 font-semibold text-stone-800 text-sm mb-1">
+          <Icon.BarChart className="w-4 h-4 text-stone-500" />
+          Avancement par projet
+        </p>
+        <p className="text-xs text-stone-400 mb-2">Pourcentage de tâches terminées, tous projets confondus</p>
+        <ProjectsBarChart projects={projects} />
+      </div>
+    </div>
+  );
+}
+
+function Dashboard({ user, role, onLogout }) {
+  const [projects, setProjects] = useState(loadProjects);
+  const [selectedId, setSelectedId] = useState(null);
+  const [tab, setTab] = useState(role === "responsable" ? "overview" : "projets");
+
+  useEffect(() => saveProjects(projects), [projects]);
+
+  const visibleProjects = useMemo(() => {
+    if (role === "responsable") return projects;
+    // Chef ou membre : on voit tout projet où on apparaît, dans n'importe
+    // quel rôle (chef sur l'un, simple membre sur un autre).
+    return projects.filter((p) => p.chefDeProjet === user || p.membres.includes(user));
+  }, [projects, role, user]);
+
+  // Le badge affiché reflète la situation réelle de l'utilisateur dans ses
+  // projets, pas seulement le rôle choisi à la connexion : quelqu'un chef
+  // sur un projet et membre sur un autre porte les deux casquettes.
+  const isChefQuelquePart = role !== "responsable" && projects.some((p) => p.chefDeProjet === user);
+  const isMembreQuelquePart = role !== "responsable" && projects.some((p) => p.membres.includes(user));
+  const badgeLabel = role === "responsable"
+    ? "Responsable"
+    : isChefQuelquePart && isMembreQuelquePart
+      ? "Chef de projet et membre"
+      : isChefQuelquePart
+        ? "Chef de projet"
+        : "Membre";
+
+  useEffect(() => {
+    if (!selectedId && visibleProjects.length > 0) setSelectedId(visibleProjects[0].id);
+  }, [visibleProjects, selectedId]);
+
+  const selected = useMemo(() => projects.find((p) => p.id === selectedId) || null, [projects, selectedId]);
+
+  const updateProject = (projectId, updater) => {
+    setProjects((prev) => prev.map((p) => (p.id === projectId ? updater(p) : p)));
+  };
+
+  const toggleTask = (projectId, taskId) =>
+    updateProject(projectId, (p) => ({ ...p, tasks: p.tasks.map((t) => (t.id === taskId ? { ...t, done: !t.done } : t)) }));
+
+  const addTask = (projectId, task) =>
+    updateProject(projectId, (p) => {
+      const newId = Math.max(0, ...p.tasks.map((t) => t.id)) + 1;
+      return { ...p, tasks: [...p.tasks, { id: newId, done: false, ...task }] };
+    });
+
+  const deleteTask = (projectId, taskId) =>
+    updateProject(projectId, (p) => ({ ...p, tasks: p.tasks.filter((t) => t.id !== taskId) }));
+
+  const renameTask = (projectId, taskId, title) =>
+    updateProject(projectId, (p) => ({ ...p, tasks: p.tasks.map((t) => (t.id === taskId ? { ...t, title } : t)) }));
+
+  const timestamp = () => new Date().toISOString().slice(0, 16).replace("T", " ");
+
+  const sendMembresChat = (projectId, text) =>
+    updateProject(projectId, (p) => {
+      const newId = Math.max(0, ...p.chatMembres.map((m) => m.id)) + 1;
+      return { ...p, chatMembres: [...p.chatMembres, { id: newId, author: user, text, ts: timestamp() }] };
+    });
+
+  const sendResponsableChat = (projectId, text) =>
+    updateProject(projectId, (p) => {
+      const newId = Math.max(0, ...p.chatResponsable.map((m) => m.id)) + 1;
+      return { ...p, chatResponsable: [...p.chatResponsable, { id: newId, author: user, text, ts: timestamp() }] };
+    });
+
+  const uploadDocument = (projectId, doc) =>
+    updateProject(projectId, (p) => {
+      const docs = p.documents || [];
+      const newId = Math.max(0, ...docs.map((d) => d.id)) + 1;
+      return { ...p, documents: [...docs, { id: newId, ...doc }] };
+    });
+
+  const replaceDocument = (projectId, docId, doc) =>
+    updateProject(projectId, (p) => ({
+      ...p,
+      documents: (p.documents || []).map((d) => (d.id === docId ? { ...d, ...doc } : d)),
+    }));
+
+  const deleteDocument = (projectId, docId) =>
+    updateProject(projectId, (p) => ({ ...p, documents: (p.documents || []).filter((d) => d.id !== docId) }));
+
+  const createProject = (data) => {
+    setProjects((prev) => {
+      const newId = Math.max(0, ...prev.map((p) => p.id)) + 1;
+      return [...prev, { id: newId, ...data }];
+    });
+  };
+
+  const deleteProject = (projectId) => {
+    setProjects((prev) => prev.filter((p) => p.id !== projectId));
+    if (selectedId === projectId) setSelectedId(null);
+  };
+
+  const navTabs = role === "responsable"
+    ? [["overview", "Vue d'ensemble", Icon.BarChart], ["projets", "Tous les projets", Icon.Dashboard], ["creer", "Créer un projet", Icon.Plus]]
+    : [["projets", "Mes projets", Icon.Dashboard]];
+
+  return (
+    <div className="min-h-screen">
+      <header className="border-b border-stone-300 bg-white px-6 py-4 flex items-center justify-between">
+        <div>
+          <p className="text-xs text-stone-500">JUNIA ISEN</p>
+          <h1 className="font-bold text-stone-900">Gestion de projets étudiants</h1>
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="flex items-center gap-1 text-sm text-stone-600">
+            {role === "responsable" ? <Icon.Shield className="w-4 h-4 text-[#5B4B8A]" /> : isChefQuelquePart ? <Icon.Star className="w-4 h-4 text-amber-500" /> : <Icon.User className="w-4 h-4 text-stone-400" />}
+            {user} · {badgeLabel}
+          </span>
+          <button onClick={onLogout} className="flex items-center gap-1 text-sm text-[#5B4B8A] font-medium hover:underline">
+            <Icon.LogOut className="w-4 h-4" />
+            Se déconnecter
+          </button>
+        </div>
+      </header>
+
+      <div className="max-w-5xl mx-auto px-6 pt-6">
+        <div className="flex gap-2 mb-2 border-b border-stone-200">
+          {navTabs.map(([key, label, Ico]) => (
+            <button
+              key={key}
+              onClick={() => setTab(key)}
+              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 -mb-px ${tab === key ? "border-[#5B4B8A] text-[#5B4B8A]" : "border-transparent text-stone-500"}`}
+            >
+              <Ico className="w-4 h-4" />
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {tab === "projets" && (
+        <div className="max-w-5xl mx-auto grid md:grid-cols-[280px_1fr] gap-6 px-6 py-8">
+          <div>
+            <h2 className="flex items-center gap-2 text-sm font-semibold text-stone-500 mb-3">
+              <Icon.Folder className="w-4 h-4" />
+              Projets ({visibleProjects.length})
+            </h2>
+            <div className="space-y-2">
+              {visibleProjects.map((p) => {
+                const style = STATUS_STYLES[p.status];
+                const active = p.id === selectedId;
+                return (
+                  <button
+                    key={p.id}
+                    onClick={() => setSelectedId(p.id)}
+                    className="w-full text-left bg-white p-3 rounded transition-shadow"
+                    style={{ borderLeft: `4px solid ${style.border}`, boxShadow: active ? "0 0 0 2px #5B4B8A33" : "0 1px 2px rgba(0,0,0,0.05)" }}
+                  >
+                    <p className="font-medium text-stone-900 text-sm">{p.title}</p>
+                    <p className="text-xs text-stone-500 mt-1">{p.status}</p>
+                  </button>
+                );
+              })}
+              {visibleProjects.length === 0 && <p className="text-sm text-stone-400">Aucun projet pour l'instant.</p>}
+            </div>
+          </div>
+
+          <div className="bg-white rounded p-6 shadow-sm">
+            {selected ? (
+              <ProjectDetail
+                project={selected}
+                currentUser={user}
+                role={role}
+                onToggleTask={toggleTask}
+                onAddTask={addTask}
+                onDeleteTask={deleteTask}
+                onRenameTask={renameTask}
+                onDeleteProject={deleteProject}
+                onSendMembresChat={sendMembresChat}
+                onSendResponsableChat={sendResponsableChat}
+                onUploadDocument={uploadDocument}
+                onReplaceDocument={replaceDocument}
+                onDeleteDocument={deleteDocument}
+              />
+            ) : (
+              <p className="text-stone-400">Sélectionne un projet.</p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {tab === "overview" && role === "responsable" && (
+        <div className="max-w-5xl mx-auto px-6 py-8">
+          <OverviewTab projects={projects} />
+        </div>
+      )}
+
+      {tab === "creer" && role === "responsable" && (
+        <div className="max-w-5xl mx-auto px-6 py-8">
+          <CreateProjectForm onCreate={createProject} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function App() {
+  const [session, setSession] = useState(() => {
+    const token = localStorage.getItem("junia_jwt");
+    return token ? decodeFakeJWT(token) : null;
+  });
+
+  const handleLogin = (name, role) => {
+    const token = encodeFakeJWT(name, role);
+    localStorage.setItem("junia_jwt", token);
+    setSession(decodeFakeJWT(token));
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem("junia_jwt");
+    setSession(null);
+  };
+
+  return session ? (
+    <Dashboard user={session.sub} role={session.role} onLogout={handleLogout} />
+  ) : (
+    <LoginScreen onLogin={handleLogin} />
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>
