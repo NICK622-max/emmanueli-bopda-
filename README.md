@@ -1,6 +1,6 @@
 Salut, moi c'est Nick 👋
 
-Data Engineer Apprenti | EFREI Paris, Big Data and Machine Learning | Alternance septembre 2026
+Data Engineer en Alternance | EFREI Paris, Big Data and Machine Learning | Alternance Octobre 2026
 
 Je transforme des données brutes en informations fiables. Mon fil conducteur : la qualité de la donnée qui arrive au bout de la chaîne, de la collecte à la restitution.
 
