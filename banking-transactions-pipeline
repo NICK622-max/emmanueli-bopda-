@@ -1,0 +1,38 @@
+# Carte projet pour le portfolio (emmanueli-bopda.vercel.app)
+
+**Titre** : Banking Transactions Pipeline
+**Sous-titre** : Du fichier bancaire brut au dashboard, avec contrôles qualité
+**Stack** : Python · PostgreSQL · Airflow · Docker · Power BI
+**Lien** : https://github.com/NICK622-max/banking-transactions-pipeline
+
+**Description courte**
+Pipeline ETL orchestré par Airflow : ingestion de CSV quotidiens, nettoyage en trois couches
+(raw, clean, analytics), cinq contrôles qualité bloquants et dashboard Power BI.
+Sur 18 360 lignes simulées, 926 sont rejetées avec leur raison et 51 marquées suspectes.
+
+## HTML prêt à coller
+```html
+<article class="project-card">
+  <h3>Banking Transactions Pipeline</h3>
+  <p>
+    Pipeline ETL orchestré par Airflow : ingestion de CSV quotidiens, nettoyage en
+    trois couches (raw, clean, analytics), contrôles qualité bloquants et dashboard Power BI.
+  </p>
+  <ul class="tags">
+    <li>Python</li><li>PostgreSQL</li><li>Airflow</li><li>Docker</li><li>Power BI</li>
+  </ul>
+  <a href="https://github.com/NICK622-max/banking-transactions-pipeline"
+     target="_blank" rel="noopener">Voir sur GitHub</a>
+</article>
+```
+
+## Objet JavaScript (si le portfolio a une liste de projets en données)
+```js
+{
+  title: "Banking Transactions Pipeline",
+  description:
+    "Pipeline ETL orchestré par Airflow : ingestion, nettoyage en 3 couches, contrôles qualité et dashboard Power BI.",
+  tags: ["Python", "PostgreSQL", "Airflow", "Docker", "Power BI"],
+  link: "https://github.com/NICK622-max/banking-transactions-pipeline",
+}
+```
